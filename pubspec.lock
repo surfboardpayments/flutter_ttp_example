@@ -360,9 +360,10 @@ packages:
   surfboard_ttp:
     dependency: "direct main"
     description:
-      path: "../.."
-      relative: true
-    source: path
+      name: surfboard_ttp
+      sha256: "6222a639f3d898a70be134081c6fb43a80e9003d6b9517c584912b879f5a99ce"
+      url: "https://pub.dev"
+    source: hosted
     version: "1.0.0"
   term_glyph:
     dependency: transitive
