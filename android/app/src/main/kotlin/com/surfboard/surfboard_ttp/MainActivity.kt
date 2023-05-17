@@ -1,4 +1,4 @@
-package com.example.payment_example
+package com.surfboard.surfboard_ttp
 
 import io.flutter.embedding.android.FlutterActivity
 
