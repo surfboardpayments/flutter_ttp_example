@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:payment_example/service/evn.dart';
 import 'package:payment_example/service/local_storage.dart';
@@ -6,18 +7,16 @@ import 'package:surfboard_ttp/models/order_model/order_models.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  LocalStorage.initialize();
-  runApp(const MyApp());
+  await LocalStorage.initialize();
   initializeSDK();
+  runApp(const MyApp());
 }
 
 initializeSDK() {
   SurfboardTTP stoked = SurfboardTTP(
       apiUrl: apiUrl,
-      cpocBundleId: cpocBundleId,
-      terminalId:
-          LocalStorage.posTerminalIdBox?.get(StorageKeys.posTerminalId.name) ??
-              '',
+      ttpBundleId: ttpBundleId,
+      terminalId: LocalStorage.posTerminalIdBox?.get(StorageKeys.posTerminalId.name) ?? '',
       partnerId: partnerId,
       merchantId: merchantId,
       storeId: storeId,
@@ -31,7 +30,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'SurfboardTTP Demo',
+        title: 'SDK DEMO',
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
@@ -49,16 +48,13 @@ class Testing extends StatefulWidget {
 class _TestingState extends State<Testing> with WidgetsBindingObserver {
   final Terminal terminal = Terminal();
   String transactionId = '';
-  RegisterTerminalReturnType registerTerminalReturn =
-      const RegisterTerminalReturnType(
-          terminalId: '', registrationCodeId: '', entryCode: '');
+
+  StreamController<AppLifecycleState> appLifecycleStream = StreamController<AppLifecycleState>();
   @override
   void initState() {
     super.initState();
-    String cpocTerminalId =
-        LocalStorage.cpocTerminalIdBox?.get(StorageKeys.cpocTerminalId.name) ??
-            '';
-    if (cpocTerminalId.isEmpty) {
+    String posTerminalId = LocalStorage.posTerminalIdBox?.get(StorageKeys.posTerminalId.name) ?? '';
+    if (posTerminalId.isEmpty) {
       registerTerminal();
     }
     WidgetsBinding.instance.addObserver(this);
@@ -66,12 +62,9 @@ class _TestingState extends State<Testing> with WidgetsBindingObserver {
 
   registerTerminal() {
     try {
-      terminal.registerTerminal().then((value) {
-        registerTerminalReturn = value;
-        if (registerTerminalReturn.entryCode.isNotEmpty) {
-          LocalStorage.posTerminalIdBox
-              ?.put(StorageKeys.posTerminalId.name, value.terminalId);
-          terminal.callCpocForRegistration(registerTerminalReturn.entryCode);
+      terminal.registerTerminal(appLifecycleStream.stream).then((value) {
+        if (value.isNotEmpty) {
+          LocalStorage.posTerminalIdBox?.put(StorageKeys.posTerminalId.name, value);
         }
       });
     } catch (e) {
@@ -84,22 +77,12 @@ class _TestingState extends State<Testing> with WidgetsBindingObserver {
       if (_orderId != 'No order found' && _orderId != 'completed') {
         payment.getTransactionDetails().then((value) {
           setState(() {
-            _orderId = 'completed';
             transactionId = value.transactionId;
+            if (transactionId.isNotEmpty) {
+              _orderId = 'completed';
+            }
           });
         });
-      } else {
-        String cpocTerminalId = LocalStorage.cpocTerminalIdBox
-                ?.get(StorageKeys.cpocTerminalId.name) ??
-            '';
-        if (cpocTerminalId.isEmpty) {
-          terminal
-              .registerCpoc(registerTerminalReturn.registrationCodeId)
-              .then((value) {
-            LocalStorage.cpocTerminalIdBox
-                ?.put(StorageKeys.cpocTerminalId.name, value);
-          });
-        }
       }
     } catch (e) {
       debugPrint(e.toString());
@@ -111,13 +94,17 @@ class _TestingState extends State<Testing> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState appState) {
     switch (appState) {
       case AppLifecycleState.resumed:
+        appLifecycleStream.add(AppLifecycleState.resumed);
         handleResume();
         break;
       case AppLifecycleState.inactive:
+        appLifecycleStream.add(AppLifecycleState.inactive);
         break;
       case AppLifecycleState.paused:
+        appLifecycleStream.add(AppLifecycleState.paused);
         break;
       case AppLifecycleState.detached:
+        appLifecycleStream.add(AppLifecycleState.detached);
         break;
     }
   }
@@ -163,7 +150,7 @@ class _TestingState extends State<Testing> with WidgetsBindingObserver {
             if (transactionId.isNotEmpty) Text('transactionId: $transactionId'),
             ElevatedButton(
                 onPressed: () {
-                  Order order = Order(orderType: OrderType.purchaseOrder);
+                  Order order = Order(orderType: OrderType.purchase);
                   order.addLineItem(orderLines).createOrder().then((value) {
                     setState(() {
                       _orderId = value.orderId;

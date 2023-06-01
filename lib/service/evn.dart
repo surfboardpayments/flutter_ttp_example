@@ -1,5 +1,5 @@
 const String apiUrl = 'apiUrl';
-const String cpocBundleId = "bundleId";
+const String ttpBundleId = "bundleId";
 const String partnerId = "partnerId";
 const String merchantId = "merchantId";
 const String storeId = "storeId";
